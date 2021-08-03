@@ -1,0 +1,1780 @@
+{
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": "-- Grafana --",
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "editable": true,
+  "gnetId": null,
+  "graphTooltip": 0,
+  "id": 6,
+  "iteration": 1621429454051,
+  "links": [],
+  "panels": [
+    {
+      "datasource": "PER-SEC-OPS",
+      "description": "This is the total amount of unique vulnerabilities detected for each host between the Primary & Secondary month.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "light-orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Critical"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-red",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "High"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-orange",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Medium"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "semi-dark-yellow",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Low"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "fixedColor": "green",
+                  "mode": "fixed"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 0,
+        "y": 0
+      },
+      "id": 22,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "\nWITH date_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'September' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS start_time,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2021', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'February' ORDER BY lv.key DESC), '-', '01 00:1:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS end_time)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$start_year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$start_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS start_time,\n (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$end_year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$end_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS end_time)\n    ),\n    scan_id_total_time AS (\n        SELECT\n--                 row_number()\n--                 OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT start_time FROM date_time))\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT end_time FROM date_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n    )\n\n    ,distinct_vuln_by_host AS (\n         SELECT DISTINCT\n             host,\n             risk,\n             name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT scan_id_total_time.history_id FROM scan_id_total_time))\n    )\n    SELECT COUNT(risk),\n            risk,\n            now() AS TIME\n    FROM distinct_vuln_by_host\n    GROUP BY risk, now()\n    ORDER BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Total Vulnerabilities",
+      "type": "stat"
+    },
+    {
+      "datasource": "PER-SEC-OPS",
+      "description": "This is the total amount of resolved vulnerabilities since the last scans of the previous month.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 250
+              },
+              {
+                "color": "orange",
+                "value": 500
+              },
+              {
+                "color": "yellow",
+                "value": 1000
+              },
+              {
+                "color": "green",
+                "value": 2000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 12,
+        "x": 12,
+        "y": 0
+      },
+      "id": 23,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "mean"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "-- GLOBAL RESOLVED\nWITH primary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    secondary_time AS (\n--         SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'February' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'June' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n        SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM primary_time))\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM primary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n    ),\n    new_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT new_month.history_id FROM new_month WHERE new_month.cnt = 1))\n    ),\n    v_new AS (\n        SELECT\n            nr.name,\n            nr.risk,\n            count(nr.name) AS total\n        FROM new_result nr\n        GROUP BY nr.risk, nr.name\n        ORDER BY nr.risk, (count(nr.name)) DESC, nr.name\n    ),\n    old_month AS (\n        SELECT\n            row_number()\n            OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n            nessus_scans_info.scan_id,\n            nessus_scans_info.history_id,\n            nessus_scans_info.scan_start,\n            nessus_scans_info.status\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= (date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time)) - '1 mon'::INTERVAL)\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) - '1 day'::INTERVAL)\n    ),\n    old_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n    ),\n    v_old AS (\n        SELECT\n            pr.name,\n            pr.risk,\n            count(pr.name) AS total\n        FROM old_result pr\n        GROUP BY pr.risk, pr.name\n        ORDER BY pr.risk, (count(pr.name)) DESC, pr.name\n    )\nSELECT\n    vo.risk,\n    SUM(vo.total - COALESCE(vn.total, 0)) AS total,\n    NOW() AS time\nFROM v_old vo\nLEFT JOIN v_new vn ON vo.name = vn.name\nWHERE vo.name NOT IN (SELECT name FROM v_new)\n    OR (vn.name = vo.name AND vo.total > vn.total)\nGROUP BY vo.risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Resolved Vulnerabilities",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 4,
+        "x": 0,
+        "y": 6
+      },
+      "id": 19,
+      "options": {
+        "content": "# PRIMARY MONTH",
+        "mode": "markdown"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": false,
+          "rawSql": "SELECT\n  $__time(time_column),\n  value1\nFROM\n  metric_table\nWHERE\n  $__timeFilter(time_column)\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "text"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "CRITICAL"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 4,
+        "y": 6
+      },
+      "id": 13,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v_time_1 AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM v_time_1))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM v_time_1)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     new_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 new_month.history_id\n                                             FROM new_month\n                                             WHERE new_month.cnt = 1))\n     ),\n     v_new AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM new_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_new\nWHERE risk = 'Critical'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HIGH"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 9,
+        "y": 6
+      },
+      "id": 2,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v_time_1 AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM v_time_1))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM v_time_1)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     new_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 new_month.history_id\n                                             FROM new_month\n                                             WHERE new_month.cnt = 1))\n     ),\n     v_new AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM new_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_new\nWHERE risk = 'High'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "MEDIUM"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 14,
+        "y": 6
+      },
+      "id": 24,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v_time_1 AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = 'September'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = 'September'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM v_time_1))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM v_time_1)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     new_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 new_month.history_id\n                                             FROM new_month\n                                             WHERE new_month.cnt = 1))\n     ),\n     v_new AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM new_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_new\nWHERE risk = 'Medium'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "LOW"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 19,
+        "y": 6
+      },
+      "id": 4,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH v_time_1 AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM v_time_1))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM v_time_1)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     new_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 new_month.history_id\n                                             FROM new_month\n                                             WHERE new_month.cnt = 1))\n     ),\n     v_new AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM new_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_new\nWHERE risk = 'Low'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": null,
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 4,
+        "x": 0,
+        "y": 8
+      },
+      "id": 20,
+      "options": {
+        "content": "# SECONDARY MONTH",
+        "mode": "markdown"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "time_series",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": false,
+          "rawSql": "SELECT\n  $__time(time_column),\n  value1\nFROM\n  metric_table\nWHERE\n  $__timeFilter(time_column)\n",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "text"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "dark-red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "CRITICAL"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 4,
+        "y": 8
+      },
+      "id": 14,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "\nWITH secondary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    old_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     old_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n     ),\n     v_old AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM old_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_old\nWHERE risk = 'Critical'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "HIGH"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 9,
+        "y": 8
+      },
+      "id": 9,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "\nWITH secondary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    old_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     old_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n     ),\n     v_old AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM old_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_old\nWHERE risk = 'High'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "MEDIUM"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 14,
+        "y": 8
+      },
+      "id": 6,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "\nWITH secondary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    old_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     old_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n     ),\n     v_old AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM old_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_old\nWHERE risk = 'Medium'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "cacheTimeout": null,
+      "datasource": "PER-SEC-OPS",
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "LOW"
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 2,
+        "w": 5,
+        "x": 19,
+        "y": 8
+      },
+      "id": 7,
+      "interval": null,
+      "links": [],
+      "options": {
+        "colorMode": "value",
+        "graphMode": "area",
+        "justifyMode": "auto",
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": true
+        },
+        "textMode": "value_and_name"
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "\nWITH secondary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'March' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    old_month AS (\n    SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n    FROM nessus_scans_info\n    WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n      AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time))\n      AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n),\n     old_results AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n     ),\n     v_old AS (\n        SELECT\n            cr.name,\n            cr.risk,\n            count(cr.name) AS total\n        FROM old_results cr\n        GROUP BY cr.risk, cr.name\n        ORDER BY cr.risk, (count(cr.name)) DESC, cr.name\n)\nSELECT\n    risk,\n    SUM(total) AS total,\n    NOW() as time\nFROM v_old\nWHERE risk = 'Low'\nGROUP BY risk;",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "type": "stat"
+    },
+    {
+      "datasource": "PER-SEC-OPS",
+      "description": "All new vulnerabilities detected in scan 1 that was not detected in scan 2.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": false
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "risk"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Risk"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 8,
+        "x": 0,
+        "y": 10
+      },
+      "id": 12,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Risk"
+          }
+        ]
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "SELECT *\nFROM v_current_month WHERE name NOT IN (SELECT name FROM v_previous_month);",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "New Vulnerabilities",
+      "type": "table"
+    },
+    {
+      "datasource": "PER-SEC-OPS",
+      "description": "All vulnerabilities detected in scan 2 and not detected in scan 1.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": false
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "risk"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Risk"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 8,
+        "x": 8,
+        "y": 10
+      },
+      "id": 11,
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "desc": false,
+            "displayName": "Name"
+          }
+        ]
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH primary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'September' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'September' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    secondary_time AS (\n--         SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'August' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'August' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n        SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM primary_time))\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM primary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n    ),\n    new_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT new_month.history_id FROM new_month WHERE new_month.cnt = 1))\n    ),\n    v_new AS (\n        SELECT\n            nr.name,\n            nr.risk,\n            count(nr.name) AS total\n        FROM new_result nr\n        GROUP BY nr.risk, nr.name\n        ORDER BY nr.risk, (count(nr.name)) DESC, nr.name\n    ),\n    old_month AS (\n        SELECT\n            row_number()\n            OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n            nessus_scans_info.scan_id,\n            nessus_scans_info.history_id,\n            nessus_scans_info.scan_start,\n            nessus_scans_info.status\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= (date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time)) - '1 mon'::INTERVAL)\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) - '1 day'::INTERVAL)\n    ),\n    old_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n    ),\n    v_old AS (\n        SELECT\n            pr.name,\n            pr.risk,\n            count(pr.name) AS total\n        FROM old_result pr\n        GROUP BY pr.risk, pr.name\n        ORDER BY pr.risk, (count(pr.name)) DESC, pr.name\n    )\nSELECT * FROM v_old WHERE name NOT IN (SELECT name FROM v_new)",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Resolved Vulnerabilities",
+      "type": "table"
+    },
+    {
+      "datasource": null,
+      "description": "All vulnerabilities detected in scan 1 and scan 2 that had a severity change.",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "left",
+            "filterable": false
+          },
+          "mappings": [
+            {
+              "from": "",
+              "id": 0,
+              "text": "",
+              "to": "",
+              "type": 1
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "name"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Name"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "new_risk"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Current Risk"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "total"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Total"
+              },
+              {
+                "id": "custom.width",
+                "value": 100
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "old_risk"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 100
+              },
+              {
+                "id": "displayName",
+                "value": "Previous Risk"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Previous Risk"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 99
+              }
+            ]
+          }
+        ]
+      },
+      "gridPos": {
+        "h": 13,
+        "w": 8,
+        "x": 16,
+        "y": 10
+      },
+      "id": 15,
+      "options": {
+        "showHeader": true,
+        "sortBy": []
+      },
+      "pluginVersion": "7.3.4",
+      "targets": [
+        {
+          "format": "table",
+          "group": [],
+          "metricColumn": "none",
+          "rawQuery": true,
+          "rawSql": "WITH primary_time AS (\n--     SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'September' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'September' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$new_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    secondary_time AS (\n--         SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'August' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n--         (SELECT date_trunc('month'::TEXT, (SELECT date_trunc('month'::TEXT, CAST(CONCAT('2020', '-', (SELECT key FROM lookup_values lv INNER JOIN lookup_types lt ON lv.type_id = lt.id WHERE lt.name = 'Months' AND lv.value = 'August' ORDER BY lv.key DESC), '-', '01 00:01:00.000') AS TIMESTAMP)))) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    SELECT\n        date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) AS time_1,\n    (SELECT date_trunc('month'::TEXT, CAST(CONCAT('$year', '-', (SELECT key\n                                                             FROM lookup_values lv\n                                                             INNER JOIN lookup_types lt ON lv.type_id = lt.id\n                                                             WHERE lt.name = 'Months'\n                                                               AND lv.value = '$old_month'\n                                                             ORDER BY lv.key DESC), '-',\n                                              '01 00:01:00.000') AS TIMESTAMP)) + '1 mon'::INTERVAL - '1 day'::INTERVAL AS time_2)\n    ),\n    new_month AS (\n        SELECT\n                row_number()\n                OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n                nessus_scans_info.history_id\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= date_trunc('month'::TEXT, (SELECT time_1 FROM primary_time))\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM primary_time)) + '1 mon'::INTERVAL - '1 day'::INTERVAL)\n    ),\n    new_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT new_month.history_id FROM new_month WHERE new_month.cnt = 1))\n    ),\n    v_new AS (\n        SELECT\n            nr.name,\n            nr.risk,\n            count(nr.name) AS total\n        FROM new_result nr\n        GROUP BY nr.risk, nr.name\n        ORDER BY nr.risk, (count(nr.name)) DESC, nr.name\n    ),\n    old_month AS (\n        SELECT\n            row_number()\n            OVER (PARTITION BY nessus_scans_info.scan_id ORDER BY nessus_scans_info.scan_start DESC) AS cnt,\n            nessus_scans_info.scan_id,\n            nessus_scans_info.history_id,\n            nessus_scans_info.scan_start,\n            nessus_scans_info.status\n        FROM nessus_scans_info\n        WHERE nessus_scans_info.status::TEXT = 'completed'::TEXT\n        AND nessus_scans_info.scan_start >= (date_trunc('month'::TEXT, (SELECT time_1 FROM secondary_time)) - '1 mon'::INTERVAL)\n        AND nessus_scans_info.scan_start <= (date_trunc('month'::TEXT, (SELECT time_2 FROM secondary_time)) - '1 day'::INTERVAL)\n    ),\n    old_result AS (\n         SELECT DISTINCT\n             nessus_report.host,\n             nessus_report.risk,\n             nessus_report.name\n         FROM nessus_report\n         WHERE (nessus_report.history_id IN (SELECT\n                                                 old_month.history_id\n                                             FROM old_month\n                                             WHERE old_month.cnt = 1))\n    ),\n    v_old AS (\n        SELECT\n            pr.name,\n            pr.risk,\n            count(pr.name) AS total\n        FROM old_result pr\n        GROUP BY pr.risk, pr.name\n        ORDER BY pr.risk, (count(pr.name)) DESC, pr.name\n    )\nSELECT\n    vn.name,\n    vn.risk  AS new_risk,\n    vo.risk AS old_risk,\n    vo.total\nFROM v_new vn\nLEFT JOIN v_old vo ON vn.name = vo.name\nWHERE vo.risk != vn.risk",
+          "refId": "A",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "column"
+              }
+            ]
+          ],
+          "timeColumn": "time",
+          "where": [
+            {
+              "name": "$__timeFilter",
+              "params": [],
+              "type": "macro"
+            }
+          ]
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "Risk Changes",
+      "type": "table"
+    }
+  ],
+  "refresh": false,
+  "schemaVersion": 26,
+  "style": "dark",
+  "tags": [],
+  "templating": {
+    "list": [
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "2020",
+          "value": "2020"
+        },
+        "datasource": "PER-SEC-OPS",
+        "definition": "SELECT DISTINCT\n    \"left\"(CAST(scan_start AS VARCHAR), 4) AS filter_months\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY filter_months DESC;",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Start Year",
+        "multi": false,
+        "name": "start_year",
+        "options": [],
+        "query": "SELECT DISTINCT\n    \"left\"(CAST(scan_start AS VARCHAR), 4) AS filter_months\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY filter_months DESC;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "September",
+          "value": "September"
+        },
+        "datasource": "PER-SEC-OPS",
+        "definition": "SELECT DISTINCT\n-- *\n--     \"left\"(CAST(scan_start AS VARCHAR),7) AS scan_start,\n    CAST(substr(CAST(scan_start AS VARCHAR),6,2) AS INT),\n    lv.value\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nINNER JOIN lookup_values lv ON lv.key = substr(CAST(scan_start AS VARCHAR), 6, 2) AND lv.type_id = (SELECT id FROM lookup_types WHERE name = 'Months' AND deleted = false LIMIT 1)\nWHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$start_year'\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY substr DESC",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "Starting Month",
+        "multi": false,
+        "name": "start_month",
+        "options": [
+          {
+            "selected": false,
+            "text": "December",
+            "value": "December"
+          },
+          {
+            "selected": false,
+            "text": "November",
+            "value": "November"
+          },
+          {
+            "selected": false,
+            "text": "October",
+            "value": "October"
+          },
+          {
+            "selected": false,
+            "text": "September",
+            "value": "September"
+          },
+          {
+            "selected": false,
+            "text": "August",
+            "value": "August"
+          },
+          {
+            "selected": false,
+            "text": "July",
+            "value": "July"
+          },
+          {
+            "selected": false,
+            "text": "June",
+            "value": "June"
+          },
+          {
+            "selected": false,
+            "text": "May",
+            "value": "May"
+          },
+          {
+            "selected": false,
+            "text": "April",
+            "value": "April"
+          },
+          {
+            "selected": false,
+            "text": "March",
+            "value": "March"
+          },
+          {
+            "selected": false,
+            "text": "February",
+            "value": "February"
+          },
+          {
+            "selected": true,
+            "text": "January",
+            "value": "January"
+          }
+        ],
+        "query": "SELECT DISTINCT\n-- *\n--     \"left\"(CAST(scan_start AS VARCHAR),7) AS scan_start,\n    CAST(substr(CAST(scan_start AS VARCHAR),6,2) AS INT),\n    lv.value\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nINNER JOIN lookup_values lv ON lv.key = substr(CAST(scan_start AS VARCHAR), 6, 2) AND lv.type_id = (SELECT id FROM lookup_types WHERE name = 'Months' AND deleted = false LIMIT 1)\nWHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$start_year'\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY substr DESC",
+        "refresh": 0,
+        "regex": "([A-Za-z]+)",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "selected": false,
+          "text": "2020",
+          "value": "2020"
+        },
+        "datasource": "PER-SEC-OPS",
+        "definition": "SELECT DISTINCT\n    \"left\"(CAST(scan_start AS VARCHAR), 4) AS filter_months\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nAND CAST(\"left\"(CAST(scan_start AS VARCHAR), 4) AS INT) >= $start_year\nORDER BY filter_months DESC;",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "End Year",
+        "multi": false,
+        "name": "end_year",
+        "options": [],
+        "query": "SELECT DISTINCT\n    \"left\"(CAST(scan_start AS VARCHAR), 4) AS filter_months\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nAND CAST(\"left\"(CAST(scan_start AS VARCHAR), 4) AS INT) >= $start_year\nORDER BY filter_months DESC;",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      },
+      {
+        "allValue": null,
+        "current": {
+          "isNone": true,
+          "selected": false,
+          "text": "None",
+          "value": ""
+        },
+        "datasource": "PER-SEC-OPS",
+        "definition": "SELECT DISTINCT\n-- *\n--     \"left\"(CAST(scan_start AS VARCHAR),7) AS scan_start,\n    CAST(substr(CAST(scan_start AS VARCHAR),6,2) AS INT),\n    lv.value\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nINNER JOIN lookup_values lv ON lv.key = substr(CAST(scan_start AS VARCHAR), 6, 2) AND lv.type_id = (SELECT id FROM lookup_types WHERE name = 'Months' AND deleted = false LIMIT 1)\n-- WHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$end_year'\nWHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$end_year'\n-- AND lv.value != '$start_month'\n-- AND lv.id > (SELECT id FROM lookup_values WHERE value = '$start_month')\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY substr DESC",
+        "error": null,
+        "hide": 0,
+        "includeAll": false,
+        "label": "End Month",
+        "multi": false,
+        "name": "end_month",
+        "options": [
+          {
+            "selected": false,
+            "text": "March",
+            "value": "March"
+          },
+          {
+            "selected": false,
+            "text": "February",
+            "value": "February"
+          },
+          {
+            "selected": true,
+            "text": "January",
+            "value": "January"
+          }
+        ],
+        "query": "SELECT DISTINCT\n-- *\n--     \"left\"(CAST(scan_start AS VARCHAR),7) AS scan_start,\n    CAST(substr(CAST(scan_start AS VARCHAR),6,2) AS INT),\n    lv.value\nFROM nessus_scans_info nsi\nINNER JOIN nessus_scans_history nsh ON nsh.history_id = nsi.history_id\nINNER JOIN lookup_values lv ON lv.key = substr(CAST(scan_start AS VARCHAR), 6, 2) AND lv.type_id = (SELECT id FROM lookup_types WHERE name = 'Months' AND deleted = false LIMIT 1)\n-- WHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$end_year'\nWHERE \"left\"(CAST(scan_start AS VARCHAR),4) = '$end_year'\n-- AND lv.value != '$start_month'\n-- AND lv.id > (SELECT id FROM lookup_values WHERE value = '$start_month')\nAND is_imported = true AND is_csv_imported = true\nAND nsi.status = 'completed'\nORDER BY substr DESC",
+        "refresh": 0,
+        "regex": "([A-Za-z]+)",
+        "skipUrlSync": false,
+        "sort": 0,
+        "tagValuesQuery": "",
+        "tags": [],
+        "tagsQuery": "",
+        "type": "query",
+        "useTags": false
+      }
+    ]
+  },
+  "time": {
+    "from": "2018-11-27T10:27:44.000Z",
+    "to": "2020-09-15T11:50:22.000Z"
+  },
+  "timepicker": {
+    "refresh_intervals": [
+      "5s",
+      "10s",
+      "30s",
+      "1m",
+      "5m",
+      "15m",
+      "30m",
+      "1h",
+      "2h",
+      "1d"
+    ]
+  },
+  "timezone": "",
+  "title": "Vulnerability Inspection",
+  "uid": "GdS56COGk",
+  "version": 24
+}
